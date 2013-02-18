@@ -34,11 +34,16 @@ sub load {
     if (-f $f2 && (stat($f))[9] <= (stat($f2))[9]) {
         return $self->loadFromJS("$f2", @_);
     }
-    my $err = system("owltools $f -o -f ojs $f2");
+    my $err = system("owltools $f -o -f ojs $f2 > /dev/null");
     if (!$err) {
         return $self->loadFromJS("$f2", @_);
     }
     die $f;
+}
+
+sub createAxiom {
+    my $self = shift;
+    return OWL::Ontology::h2obj({type=>shift, args=>[@_]});
 }
 
 1;

@@ -4,6 +4,8 @@ use vars qw(@ISA $AUTOLOAD);
 use OWL::OWLObject;
 use OWL::RDFSVocabulary;
 
+use overload '""' => sub {shift->to_string()};
+
 our $AUTOLOAD;
 
 sub new {
@@ -16,18 +18,27 @@ sub new {
 
 sub init {
     my $self = shift;
-    $self->{axioms} = shift;
+    my $axs = shift;
+    $self->{axioms} = $axs;
 }
 
-sub createFrame {
-    my $proto = shift;
-    my ($obj,$ont) = @_;
-    my $self = bless {}, ref($proto);
-    my @axs = grep { $_->isAbout($obj) } ($ont->getAxioms);
-    $self->{axioms} = \@axs;
-    return $self;
-}
 
 sub getAxioms {
-    return $self->{axioms};
+    my $self = shift;
+    my ($t) = @_;
+    if ($t) {
+        # TODO
+        return grep {ref($_) eq $t} @{$self->{axioms} || []};
+    }
+    else {
+        return @{$self->{axioms}};
+    }
 }
+
+sub to_string {
+    my $self = shift;
+    return ref($self) . 
+        "[\n  " . join("\n  ",map {$_} $self->getAxioms) . "\n]";
+}
+
+1;

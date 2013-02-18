@@ -2,7 +2,9 @@ package OWL::Ontology;
 use strict;
 use vars qw(@ISA $AUTOLOAD);
 use OWL::OWLObject;
+use OWL::Frame;
 use OWL::RDFSVocabulary;
+use Carp;
 
 our $AUTOLOAD;
 
@@ -23,12 +25,21 @@ sub h2obj {
     if (!ref($h)) {
         return $h;
     }
-    if (ref($h) && ref($h) eq 'HASH') {
+    elsif (ref($h) && ref($h) eq 'HASH') {
         my $obj = [map {h2obj($_)} @{$h->{args}}];
         bless $obj, $h->{type};
         return $obj;
     }
-    die $h;
+    elsif (ref($h) && ref($h) eq 'ARRAY') {
+        # EXPERIMENTAL: literals
+        bless $h, 'Literal';
+        return $h;
+    }
+    else {
+        # already an owl object
+        return $h;
+    }
+
 }
 
 sub getLabels {
@@ -36,7 +47,7 @@ sub getLabels {
     return shift->getAnnotationValues($subj, OWL::RDFSVocabulary->label);
 }
 
-
+# TODO: index
 sub getObjectsByAnnotationValue {
     my $self = shift;
     my $prop = shift;
@@ -65,14 +76,28 @@ sub getAnnotationValues {
     return @vals;
 }
 
+sub getAxiomCount {
+    my $self = shift;
+    return scalar($self->getAxioms);
+}
+
 sub getAxioms {
-    return map {h2obj($_)} shift->_getAxioms(@_);
+    my $self = shift;
+    my ($t, $subj) = @_;
+    if ($subj) {
+        my $frame = $self->getFrame($subj);
+        return $frame->getAxioms($t);
+    }
+    return map {h2obj($_)} $self->_getAxioms(@_);
 }
 
 sub _getAxioms {
     my $self = shift;
-    my $t = shift;
+    my ($t) = @_;
     if ($t) {
+        if (!ref($_) eq 'HASH') {
+            confess $_;
+        }
         return grep {$_->{type} eq $t} @{$self->{axioms} || []};
     }
     else {
@@ -88,18 +113,13 @@ sub getDeclared {
 # TODO: use frames
 sub getAnnotationAssertionAxioms {
     my ($self,$subj) = @_;
-    my @axs = $self->getAxioms('AnnotationAssertion');
-    if ($subj) {
-        @axs = grep {$_->getSubject eq $subj} @axs;
-    }
+    my @axs = $self->getAxioms('AnnotationAssertion', $subj);
     return @axs;
 }
-sub old___getAnnotationAssertionAxioms {
+
+sub getClassAssertionAxioms {
     my ($self,$subj) = @_;
-    my @axs = $self->getAxioms('AnnotationAssertion');
-    if ($subj) {
-        @axs = grep {$_->getSubject eq $subj} @axs;
-    }
+    my @axs = $self->getAxioms('ClassAssertion', $subj);
     return @axs;
 }
 
@@ -113,72 +133,33 @@ sub _collectFrames {
     if (@{$self->{frames} || []}) {
         return $self->{frames};
     }
-    my @objs = $self->getDeclared;
-    my @frames =
-        map {$self->_collectFrame($_)} @objs;
-    $self->{frames} = \@frames;
-    return @frames;
-}
-
-sub _collectFrame {
-    my $self = shift;
-    my ($obj) = @_;
-    my @axs = grep { $_->isAbout($obj) } ($ont->getAxioms);
-    my $frame = OWL::Frame->new(\@axs);
-    return $frame;
-}
-
-
-1;
-package OWLGeneric;
-#sub getProperty {shift->[0]};
-our %META =
-    (
-     'AnnotationAssertion' => [qw(Property Subject Value)],
-    );
-
-my %ARGMAP = ();
-
-sub initARGMAP {
-    print STDERR "INIT...\n";
-    foreach my $type (keys %META) {
-        #print STDERR "T $type\n";
-        my $i = 0;
-        my @fields = @{$META{$type}};
-        foreach (@fields) {
-            print STDERR " F: $_\n";
-            $ARGMAP{$type}->{$_} = $i;
-            $i++;
+    my %axiom_map = ();
+    foreach ($self->getAxioms) {
+        foreach my $obj ($_->getObjectsInSignature) {
+            if ($_->isAbout($obj)) {
+                push(@{$axiom_map{$obj}}, $_);
+            }
         }
     }
+    
+    $self->{frame_ix} = {};
+    #my @objs = $self->getDeclared;
+    my @objs = keys %axiom_map;
+    foreach (@objs) {
+        $self->{frame_ix}->{$_} = OWL::Frame->new($axiom_map{$_});
+    }
+    $self->{frames} = [values %{$self->{frame_ix}}];
+    return @{$self->{frames}};
 }
 
-sub AUTOLOAD {
-    
-    my $self = shift;
-
-    if (!%ARGMAP) {
-        initARGMAP();
+sub getFrame {
+    my ($self,$obj) = @_;
+    $self->_collectFrames();
+    my $frame = $self->{frame_ix}->{$obj};
+    if (!defined $frame) {
+        confess("no frame: $obj\n");
     }
-
-    my $name = $AUTOLOAD;
-    $name =~ s/.*://;   # strip fully-qualified portion
-
-    if ($name eq "DESTROY") {
-	# we dont want to propagate this!!
-	return;
-    }
-
-    confess("$self") unless ref($self);
-    
-    if ($name =~ /get(.+)/) {
-        my $ix = $ARGMAP{ref($self)}->{$1};
-        return $self->[$ix];
-    }
-
-    die("can't do $name on $self");
-    
+    return $frame;
 }
-
 
 1;

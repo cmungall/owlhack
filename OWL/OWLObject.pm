@@ -3,6 +3,10 @@ package OWL::OWLObject;
 
 use overload '""' => sub {shift->to_string()};
 
+sub getObjectsInSignature {
+    return shift->getArgs();
+}
+
 sub getArgs {
     my $self = shift;
     # in future may exclude annotations
@@ -12,7 +16,8 @@ sub getArgs {
 sub isAbout {
     my ($self,$obj) = @_;
     # may be overridden; default is 0th argument denotes the subject of the axiom
-    return $self->[0] eq $obj;
+    my $mainArg = $self->[0];
+    return "$mainArg" eq "$obj";
 }
 
 sub getAnnotations {
@@ -22,10 +27,27 @@ sub getAnnotations {
 
 sub to_string {
     my $self = shift;
+    my $type = shift;
     if (!ref($self)) {
-        return $self;
+        if ($type eq 'Value') {
+            # EEEK TODO
+            return '"'.$self.'"';
+        }
+        return "<".$self.">";
     }
-    return ref($self) . "(" . join(" ",map {to_string($_)} @$self) . ")";
+    my $n=0;
+    my @tArgs = map {
+        my $xtype = ref($self);
+        if ($META{$xtype}) {
+            # hack
+            my $nxtype = $META{$xtype}->[$n];
+            #die "X: $xtype // $nxtype $n";
+            $xtype = $nxtype;
+        }
+        $n++;
+        to_string($_, $xtype)
+    } @$self;
+    return ref($self) . "(" . join(" ",@tArgs) . ")";
 }
 
 sub objectsInSignature {
@@ -40,19 +62,21 @@ sub objectsInSignature {
 our %META =
     (
      'AnnotationAssertion' => [qw(Property Subject Value)],
+     'ObjectPropertyAssertion' => [qw(Property Subject Value)],
+     'ClassAssertion' => [qw(ClassExpression Individual)],
      'SubClassOf' => [qw(SubClass SuperClass)],
     );
 
 my %ARGMAP = ();
 
 sub initARGMAP {
-    print STDERR "INIT...\n";
+    #print STDERR "INIT...\n";
     foreach my $type (keys %META) {
         #print STDERR "T $type\n";
         my $i = 0;
         my @fields = @{$META{$type}};
         foreach (@fields) {
-            print STDERR " F: $_\n";
+            #print STDERR " F: $_\n";
             $ARGMAP{$type}->{$_} = $i;
             $i++;
         }
@@ -86,20 +110,43 @@ sub AUTOLOAD {
     
 }
 
-package Axiom;
+package OWL::Axiom;
 use base OWL::OWLObject;
 
 package ClassExpression;
 use base OWL::OWLObject;
 
+package Declaration;
+use base OWL::Axiom;
+
 package AnnotationAssertion;
-use base Axiom;
+use base OWL::Axiom;
+sub isAbout { return shift->[1] eq shift }
+
+package ClassAssertion;
+use base OWL::Axiom;
+sub isAbout { return shift->[1] eq shift }
+
+package InverseObjectProperties;
+use base OWL::Axiom;
 
 package SubClassOf;
-use base Axiom;
+use base OWL::Axiom;
+
+package SubPropertyOf;
+use base OWL::Axiom;
+
+package SubAnnotationPropertyOf;
+use base SubPropertyOf;
+
+package SubObjectPropertyOf;
+use base SubPropertyOf;
+
+package SubPropertyChainOf;
+use base SubPropertyOf;
 
 package NaryClassAxiom;
-use base Axiom;
+use base OWL::Axiom;
 sub getClassExpressions { return shift->getArgs }
 sub isSubject { my $self = shift; my $obj = shift; return scalar(grep {$_ eq $obj} $self->getClassExpressions() )}
 
@@ -108,6 +155,18 @@ use base NaryClassAxiom;
 
 package DisjointClasses;
 use base NaryClassAxiom;
+
+package PropertyAssertion;
+use base OWL::Axiom;
+sub isAbout { return shift->[1] eq shift }
+
+package ObjectPropertyAssertion;
+use base PropertyAssertion;
+
+package DataPropertyAssertion;
+use base PropertyAssertion;
+package AnnotationPropertyAssertion;
+use base PropertyAssertion;
 
 # - CLASS EXPRESSIONS -
 package ObjectIntersectionOf;
@@ -127,4 +186,19 @@ use base Restriction;
 
 package ObjectExactCardinality;
 use base CardinalityRestriction;
+
+package Characteristic; use base OWL::Axiom;
+package TransitiveObjectProperty; use base Characteristic;
+
+package Literal; use base OWL::OWLObject;
+sub to_ofn {
+    my $self = shift;
+    my $v = $self->[1];
+    $v =~ s/\"/\\\"/g;
+    return sprintf('"%s"^^%s"',$v,$self->[0]);
+}
+sub to_string {
+    my $self = shift;
+    return $self->[1];
+}
 1;

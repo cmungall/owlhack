@@ -1,4 +1,5 @@
 use OWL::FunctionalWriter;
+use base OWL::Renderer;
 
 sub render {
     my $self = shift;
