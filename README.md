@@ -13,14 +13,14 @@ owltools command line runner.
 Example
 -------
 
-   # Create an ontology object from an OWL document
-   # note: this converts to .ojs behind-the-scenes
-   my $ont = OWL->load("pizza.owl"); 
+    # Create an ontology object from an OWL document
+    # note: this converts to .ojs behind-the-scenes
+    my $ont = OWL->load("pizza.owl"); 
 
-   # Iterate through all SubClass axioms writing Sub-Super pairs
-   foreach my $axiom ($ont->getAxioms('SubClassOf')) {
-     print $axiom->getSubClass . "\t" . $axiom->getSuperClass . "\n";
-   }
+    # Iterate through all SubClass axioms writing Sub-Super pairs
+    foreach my $axiom ($ont->getAxioms('SubClassOf')) {
+       print $axiom->getSubClass . "\t" . $axiom->getSuperClass . "\n";
+    }
 
 Scripts
 -------
