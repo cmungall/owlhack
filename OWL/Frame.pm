@@ -20,6 +20,18 @@ sub init {
     my $self = shift;
     my $axs = shift;
     $self->{axioms} = $axs;
+    my @decs = $self->getAxioms('Declaration');
+    if (@decs) {
+        my $dec = shift @decs;
+        $self->{type} = $dec->[0];
+        #print STDERR "Type of $self == $self->{type}\n";
+    }
+    return $self;
+}
+
+sub getType {
+    my $self = shift;
+    return $self->{type};
 }
 
 
@@ -37,7 +49,7 @@ sub getAxioms {
 
 sub to_string {
     my $self = shift;
-    return ref($self) . 
+    return $self->{type} . 
         "[\n  " . join("\n  ",map {$_} $self->getAxioms) . "\n]";
 }
 

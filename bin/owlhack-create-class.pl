@@ -19,6 +19,10 @@ while ($ARGV[0] =~ /^(\-.*)/) {
     elsif ($opt eq '-a' || $opt eq '--annotation') {
         push(@anns, {shift @ARGV=>shift @ARGV});
     }
+    elsif ($opt eq '-h' || $opt eq '--help') {
+        print usage();
+        exit 0;
+    }
     else {
         die $opt;
     }
@@ -27,53 +31,30 @@ while ($ARGV[0] =~ /^(\-.*)/) {
 my $inFile = shift @ARGV;
 my $ont = OWL->load($inFile);
 
-my @axs = $ont->getAxioms('AnnotationAssertion');
+die "INCOMPLETE";
 
-my $sub = eval("sub { \$_ = shift; $tr; return \$_ }");
+exit 0;
 
-my @rmAxioms = ();
-my @addAxioms = ();
-foreach my $ax (@axs) {
-    my $v = $ax->getValue;
-    my $v2 = $sub->($v);
-    if ($v ne $v2) {
-        #print "-$ax\n";
-        push(@rmAxioms, $ax);
-        $ax2 = OWL->createAxiom('AnnotationAssertion',$ax->getProperty,$ax->getSubject,$v2);
-       # print "+$ax2\n";
-        push(@addAxioms, $ax2);
-    }
+
+## USAGE
+
+sub scriptname {
+    my @p = split(/\//,$0);
+    pop @p;
 }
 
-mkOntoDelta($inFile, "$inFile.NEW", \@rmAxioms, \@addAxioms);
 
-sub mkOntoDelta {
+sub usage {
+    my $sn = scriptname();
 
-    my $in = shift;
-    my $out = shift;
+    <<EOM;
 
-    my $rmOntFn = "$in.minusAxioms";
-    my $addOntFn = "$in.plusAxioms";
+$sn [-i IRI] [-l LABEL] [-a ANN]* ONT
 
-    my @rmAxioms = @{shift || []};
-    my @addAxioms = @{shift || []};
-    printf STDERR "Num: %d\n", scalar(@rmAxioms);
-    
-    my $r = OWL::Renderer::FunctionalRenderer->new();
-    my $rmOnt = OWL::Ontology->new({axioms=>[@rmAxioms]});
-    
-    $r->save($rmOnt,$rmOntFn);
+NOT IMPLEMENTED     
 
-    my $addOnt = OWL::Ontology->new({axioms=>[@addAxioms]});
-    $r->save($addOnt,$addOntFn);
-
-    my $cmd = "owltools $in --apply-patch $rmOntFn $addOntFn -o file://`pwd`/$out";
-    if (system($cmd)) {
-        die "$cmd";
-    }
-
+EOM
 }
-
 
 
 

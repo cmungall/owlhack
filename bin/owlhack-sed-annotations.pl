@@ -4,9 +4,20 @@ use OWL::Renderer::FunctionalRenderer;
 use OWL;
 use Data::Dumper;
 
+while ($ARGV[0] =~ /^(\-.*)/) {
+    my $opt = shift;
+    if ($opt eq '-h' || $opt eq '--help') {
+        print usage();
+        exit 0;
+    }
+    else {
+        die $opt;
+    }
+}
+
+my $tr = shift @ARGV;
 my $inFile = shift @ARGV;
 my $ont = OWL->load($inFile);
-my $tr = shift;
 
 my @axs = $ont->getAxioms('AnnotationAssertion');
 
@@ -27,6 +38,8 @@ foreach my $ax (@axs) {
 }
 
 mkOntoDelta($inFile, "$inFile.NEW", \@rmAxioms, \@addAxioms);
+
+exit 0;
 
 sub mkOntoDelta {
 
@@ -54,6 +67,35 @@ sub mkOntoDelta {
     }
 
 }
+
+## USAGE
+
+sub scriptname {
+    my @p = split(/\//,$0);
+    pop @p;
+}
+
+
+sub usage {
+    my $sn = scriptname();
+
+    <<EOM;
+$sn EXPR ONTOLOGY
+
+Performs a perl operation on the values of all annotation assertion
+axioms, then writes out a new ontology (same name as original with .NEW suffix)
+
+Example:
+
+$sn "s/Hand/Manus/" anatomy.owl
+
+EOM
+}
+
+
+
+
+
 
 
 

@@ -61,10 +61,12 @@ sub objectsInSignature {
 #sub getProperty {shift->[0]};
 our %META =
     (
+     'Declaration' => [qw(EntityType Entity)],
      'AnnotationAssertion' => [qw(Property Subject Value)],
      'ObjectPropertyAssertion' => [qw(Property Subject Value)],
      'ClassAssertion' => [qw(ClassExpression Individual)],
      'SubClassOf' => [qw(SubClass SuperClass)],
+     'ObjectSomeValuesFrom' => [qw(Property Filler)],
     );
 
 my %ARGMAP = ();
@@ -118,6 +120,7 @@ use base OWL::OWLObject;
 
 package Declaration;
 use base OWL::Axiom;
+sub isAbout { return shift->[1] eq shift }
 
 package AnnotationAssertion;
 use base OWL::Axiom;

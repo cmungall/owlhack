@@ -86,7 +86,12 @@ sub getAxioms {
     my ($t, $subj) = @_;
     if ($subj) {
         my $frame = $self->getFrame($subj);
-        return $frame->getAxioms($t);
+        if ($frame) {
+            return $frame->getAxioms($t);
+        }
+        else {
+            return ();
+        }
     }
     return map {h2obj($_)} $self->_getAxioms(@_);
 }
@@ -107,7 +112,7 @@ sub _getAxioms {
 
 sub getDeclared {
     my $self = shift;
-    return map {$_->{args}->[0]} $self->_getAxioms('Declaration');
+    return map {$_->{args}->[1]} $self->_getAxioms('Declaration');
 }
 
 # TODO: use frames
@@ -157,7 +162,8 @@ sub getFrame {
     $self->_collectFrames();
     my $frame = $self->{frame_ix}->{$obj};
     if (!defined $frame) {
-        confess("no frame: $obj\n");
+        return undef;
+        #confess("no frame: $obj\n");
     }
     return $frame;
 }
