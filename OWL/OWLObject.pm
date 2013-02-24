@@ -20,6 +20,14 @@ sub isAbout {
     return "$mainArg" eq "$obj";
 }
 
+sub getType {
+    return ref($_[0]);
+}
+
+sub getTypeAsManchester {
+    return shift->getType();
+}
+
 sub getAnnotations {
     my $self = shift;
     die "not implemented";
@@ -33,9 +41,13 @@ sub to_string {
             # EEEK TODO
             return '"'.$self.'"';
         }
+        # URI
         return "<".$self.">";
     }
     my $n=0;
+    if ($self->isa('Declaration')) {
+        return sprintf("Declaration(%s(<%s>))",$self->[0],$self->[1]);
+    }
     my @tArgs = map {
         my $xtype = ref($self);
         if ($META{$xtype}) {
@@ -104,6 +116,7 @@ sub AUTOLOAD {
     confess("$self") unless ref($self);
     
     if ($name =~ /get(.+)/) {
+        # TODO - validate
         my $ix = $ARGMAP{ref($self)}->{$1};
         return $self->[$ix];
     }
@@ -114,6 +127,9 @@ sub AUTOLOAD {
 
 package OWL::Axiom;
 use base OWL::OWLObject;
+
+package OWL::LogicalAxiom;
+use base OWL::Axiom;
 
 package ClassExpression;
 use base OWL::OWLObject;
@@ -127,17 +143,17 @@ use base OWL::Axiom;
 sub isAbout { return shift->[1] eq shift }
 
 package ClassAssertion;
-use base OWL::Axiom;
+use base OWL::LogicalAxiom;
 sub isAbout { return shift->[1] eq shift }
 
 package InverseObjectProperties;
-use base OWL::Axiom;
+use base OWL::LogicalAxiom;
 
 package SubClassOf;
-use base OWL::Axiom;
+use base OWL::LogicalAxiom;
 
 package SubPropertyOf;
-use base OWL::Axiom;
+use base OWL::LogicalAxiom;
 
 package SubAnnotationPropertyOf;
 use base SubPropertyOf;
@@ -149,18 +165,19 @@ package SubPropertyChainOf;
 use base SubPropertyOf;
 
 package NaryClassAxiom;
-use base OWL::Axiom;
+use base OWL::LogicalAxiom;
 sub getClassExpressions { return shift->getArgs }
 sub isSubject { my $self = shift; my $obj = shift; return scalar(grep {$_ eq $obj} $self->getClassExpressions() )}
 
 package EquivalentClasses;
 use base NaryClassAxiom;
+sub getTypeAsManchester { return "EquivalentTo" }
 
 package DisjointClasses;
 use base NaryClassAxiom;
 
 package PropertyAssertion;
-use base OWL::Axiom;
+use base OWL::LogicalAxiom;
 sub isAbout { return shift->[1] eq shift }
 
 package ObjectPropertyAssertion;
@@ -172,7 +189,18 @@ package AnnotationPropertyAssertion;
 use base PropertyAssertion;
 
 # - CLASS EXPRESSIONS -
+package NaryBooleanClassExpression;
+use base ClassExpression;
+
 package ObjectIntersectionOf;
+use base NaryBooleanClassExpression;
+sub getTypeAsManchester { return "and" }
+
+package ObjectUnionOf;
+use base NaryBooleanClassExpression;
+sub getTypeAsManchester { return "or" }
+
+package ObjectComplementOf;
 use base ClassExpression;
 
 package Restriction;
@@ -180,9 +208,11 @@ use base ClassExpression;
 
 package ObjectSomeValuesFrom;
 use base Restriction;
+sub getTypeAsManchester { return "some" }
 
 package ObjectAllValuesFrom;
 use base Restriction;
+sub getTypeAsManchester { return "only" }
 
 package CardinalityRestriction;
 use base Restriction;
@@ -190,8 +220,12 @@ use base Restriction;
 package ObjectExactCardinality;
 use base CardinalityRestriction;
 
-package Characteristic; use base OWL::Axiom;
+package Characteristic; use base OWL::LogicalAxiom;
 package TransitiveObjectProperty; use base Characteristic;
+package FunctionalObjectProperty; use base Characteristic;
+
+package ObjectPropertyDomain; use base OWL::LogicalAxiom;
+package ObjectPropertyRange; use base OWL::LogicalAxiom;
 
 package Literal; use base OWL::OWLObject;
 sub to_ofn {

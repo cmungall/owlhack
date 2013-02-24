@@ -110,6 +110,26 @@ sub _getAxioms {
     }
 }
 
+sub removeAxiom {
+    my $self = shift;
+    my $axiom = shift;
+    my $axiomStr = "$axiom";
+    my @axioms = $self->getAxioms();
+    my @new = grep {"$_" ne $axiomStr} @axioms;
+    if (@new == @axioms) {
+        die "could not find $axiom";
+    }
+    $self->{axioms} = \@new;
+    return $axiom;
+}
+
+sub addAxiom {
+    my $self = shift;
+    my $axiom = shift;
+    push(@{$self->{axioms}}, $axiom);
+    return $axiom;
+}
+
 sub getDeclared {
     my $self = shift;
     return map {$_->{args}->[1]} $self->_getAxioms('Declaration');

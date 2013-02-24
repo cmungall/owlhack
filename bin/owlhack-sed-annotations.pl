@@ -91,14 +91,3 @@ $sn "s/Hand/Manus/" anatomy.owl
 
 EOM
 }
-
-
-
-
-
-
-
-
-
-
-

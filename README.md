@@ -27,6 +27,8 @@ Scripts
 
 See the bin/ directory
 
+Not all scripts are complete. 
+
 Requirements
 ------------
 
